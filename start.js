@@ -101,73 +101,119 @@
     Demo.toyotaKata = function() {
         var _world = _engine.world;
         var c = _engine.render.context;
-
-        Demo.reset();
-
         var cardWidth = 120;
         var cardHeight = 80;
+        var cardTextWidth = cardWidth - 25;
         var nextStepsRow = 200;
         var cardTypes = [
-            {fillStyle:'#CC3333', row: 200, type: 'issue'},
-            {fillStyle:'#3333CC', row: 300, type: 'nextStep'},
-            {fillStyle:'#33CC33', row: 400, type: 'awesome'}
+            {fillStyle:'#CC7777', row: 100, type: 'issue', frictionAir: 0.7},
+            {fillStyle:'#7777CC', row: 400, type: 'nextStep', frictionAir: 0.01},
+            {fillStyle:'#77CC77', row: 700, type: 'awesome', frictionAir: 0.7 }
         ];
-
-        var links = getLinks();
-
-        var cards = getCards().concat(getNextStepsFromJira());
-
         var bodies = [];
-        var wrapText = function(text, maxWidth) {
-                    var returnArray = [];
-                    var words = text.split(' ');
-                    var line = '';
 
-                    for(var n = 0; n < words.length; n++) {
-                      var testLine = line + words[n] + ' ';
-                      var metrics = c.measureText(testLine);
-                      var testWidth = metrics.width;
-                      if (testWidth > maxWidth && n > 0) {
-                        returnArray.push(line);
-                        line = words[n] + ' ';
-                      }
-                      else {
-                        line = testLine;
-                      }
-                    }
+        var wrapText = function(text) {
+            var returnArray = [];
+            var words = text.split(' ');
+            var line = '';
+
+            for(var n = 0; n < words.length; n++) {
+                var testLine = line + words[n] + ' ';
+                var metrics = c.measureText(testLine);
+                var testWidth = metrics.width;
+                if (testWidth > cardTextWidth && n > 0) {
                     returnArray.push(line);
-                    return returnArray;
-                  }
-
-        //create bodies
-        for(var i = 0; i < cards.length; i++) {
-            var cardType = cardTypes.filter(function(item){
-               return item.type == cards[i].type;
-            })[0];
-
-            var body = Bodies.rectangle(cardType.row, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle: cardType.fillStyle }});
-            body.data = cards[i];
-            body.data.title = wrapText(cards[i].fields.summary, cardWidth - 25);
-            body.data.body = wrapText(cards[i].fields.issuetype.description, cardWidth - 25);
-            bodies.push(body);
+                    line = words[n] + ' ';
+                }
+                else {
+                    line = testLine;
+                }
+            }
+            returnArray.push(line);
+            return returnArray;
         }
 
-        var everything = Composite.create({bodies:bodies});
+        var createBody = function(card, scale) {
+            var cardType = cardTypes.filter(function(item) {
+               return item.type == card.type;
+            })[0];
 
-        //create links
-        var bind = function(b1, b2){
+            var body = Bodies.rectangle(cardType.row, y * scale, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: cardType.fillStyle }});
+            body.data = card;
+            body.data.title = wrapText(card.fields.summary);
+            body.data.body = wrapText(card.fields.issuetype.description);
+            return body;
+        }
+
+        var bindBodies = function(from, to){
             var c = Constraint.create({
-                bodyA: b1,
-                bodyB: b2,
+                bodyA: from,
+                bodyB: to,
                 stiffness: 0.001,
                 length: 150,
                 render: {
                     lineWidth: 2,
-                    strokeStyle: 'rgba(150,150,0,0.2)   '
+                    strokeStyle: 'rgba(150,150,0,0.4)   '
                 }
             });
             Composite.addConstraint(everything, c);
         };
+
+        var bindLinkedBodies = function(links) {
+            for(var i = 0; i < links.length; i++) {
+                for(var n = 0; n < links[i].nextSteps.length; n++) {
+                    var from = bodies.filter(function(body) {
+                        return body.data.id == links[i].nextSteps[n][0];
+                    })[0];
+                    var to = bodies.filter(function(body) {
+                        return body.data.id == links[i].nextSteps[n][1];
+                    })[0];
+                    bindBodies(from, to);
+                }
+            }
+        }
+        var getCardBy = function(id){
+            return cards.filter(function(card){ return card.id == id})[0];
+        }
+
+        Array.prototype.selectMany = function(fn) {
+            return this.map(fn)
+                .reduce(function(x,y) {
+                    return x.concat(y);
+                },[]);
+        };
+
+
+        var createCard = function(id){
+            var card = getCardBy(id);
+            bodies.push(createBody(card, y));
+            createdIds.push(id);
+        }
+        var createdIds = [];
+        var y = 1;
+
+        var createCardsFromLinks = function(links){
+            for(var i = 0; i < links.length; i++) {
+                createCard(links[i].issue);
+                createCard(links[i].awesome);
+
+                var all = links[i].nextSteps.selectMany(function(x) { return x; });
+
+                for(var j = 0; j < all.length; j++){
+                    if(createdIds.indexOf( all[j] ) == -1) {
+                        createCard(all[j]);
+                    }
+                }
+                y++;
+            }
+        }
+
+        Demo.reset();
+
+        var links = getLinks();
+        var cards = getCards().concat(getNextStepsFromJira());
+
+        createCardsFromLinks(links);
 
 
 
@@ -185,19 +231,9 @@
             counter = 0;
         });
 
+        var everything = Composite.create({bodies:bodies});
         World.add(_world, everything);
-        requestAnimationFrame(function(){
-            for(var i = 0; i < links.length; i++){
-                          var b1 = bodies.filter(function(body){
-                              return body.data.id == links[i][0];
-                          })[0];
-                          var b2 = bodies.filter(function(body){
-                              return body.data.id == links[i][1];
-                          })[0];
-                          bind(b1, b2);
-                      }
-        });
-
+        bindLinkedBodies(links);
         var renderOptions = _engine.render.options;
         renderOptions.showShadows = true;
     };
