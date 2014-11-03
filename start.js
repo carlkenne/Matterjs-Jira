@@ -106,47 +106,55 @@
 
         var cardWidth = 120;
         var cardHeight = 80;
+        var nextStepsRow = 200;
+        var cardTypes = [
+            {fillStyle:'#CC3333', row: 200, type: 'issue'},
+            {fillStyle:'#3333CC', row: 300, type: 'nextStep'},
+            {fillStyle:'#33CC33', row: 400, type: 'awesome'}
+        ];
 
+        var links = getLinks();
+
+        var cards = getCards().concat(getNextStepsFromJira());
+
+        var bodies = [];
         var wrapText = function(text, maxWidth) {
-             var returnArray = [];
-             var words = text.split(' ');
-             var line = '';
+                    var returnArray = [];
+                    var words = text.split(' ');
+                    var line = '';
 
-             for(var n = 0; n < words.length; n++) {
-               var testLine = line + words[n] + ' ';
-               var metrics = c.measureText(testLine);
-               var testWidth = metrics.width;
-               if (testWidth > maxWidth && n > 0) {
-                 returnArray.push(line);
-                 line = words[n] + ' ';
-               }
-               else {
-                 line = testLine;
-               }
-             }
-             returnArray.push(line);
-             return returnArray;
-           }
+                    for(var n = 0; n < words.length; n++) {
+                      var testLine = line + words[n] + ' ';
+                      var metrics = c.measureText(testLine);
+                      var testWidth = metrics.width;
+                      if (testWidth > maxWidth && n > 0) {
+                        returnArray.push(line);
+                        line = words[n] + ' ';
+                      }
+                      else {
+                        line = testLine;
+                      }
+                    }
+                    returnArray.push(line);
+                    return returnArray;
+                  }
 
-        var p1 = Bodies.rectangle(100, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle:'#CC3333' }});
-        var p2 = Bodies.rectangle(100, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle:'#CC3333' }});
-        var s1 = Bodies.rectangle(200, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle:'#3333CC' }});
-        var s2 = Bodies.rectangle(200, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle:'#3333CC' }});
-        var s3 = Bodies.rectangle(200, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle:'#3333CC' }});
-        var a1 = Bodies.rectangle(300, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle:'#33CC33' }});
-        var a2 = Bodies.rectangle(300, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle:'#33CC33' }});
+        //create bodies
+        for(var i = 0; i < cards.length; i++) {
+            var cardType = cardTypes.filter(function(item){
+               return item.type == cards[i].type;
+            })[0];
 
+            var body = Bodies.rectangle(cardType.row, 300, cardWidth, cardHeight, { frictionAir: 0.1, chamfer:10, render: {fillStyle: cardType.fillStyle }});
+            body.data = cards[i];
+            body.data.title = wrapText(cards[i].fields.summary, cardWidth - 25);
+            body.data.body = wrapText(cards[i].fields.issuetype.description, cardWidth - 25);
+            bodies.push(body);
+        }
 
-         var issueText = wrapText("issue text issue text issue text issue text issue text issue text", cardWidth - 25);
-         var awesomeText = wrapText("definition of awesome definition of awesome", cardWidth - 25);
-         var jiraText = wrapText("improvement steps", cardWidth - 25);
+        var everything = Composite.create({bodies:bodies});
 
-         p1.data = p2.data = issueText;
-         s1.data = s2.data = s3.data = jiraText;
-         a1.data = a2.data = awesomeText;
-
-        var everything = Composite.create({bodies:[p1, p2, s1, s2, s3, a1, a2]});
-
+        //create links
         var bind = function(b1, b2){
             var c = Constraint.create({
                 bodyA: b1,
@@ -162,6 +170,7 @@
         };
 
 
+
         Events.on(_engine, 'afterTick', function(event) {
             var _boxes = Composite.allBodies(everything);
             c.font = "12px Arial";
@@ -169,24 +178,25 @@
 
             for(i = 0; i < _boxes.length; i++){
                 Body.rotate(_boxes[i], -_boxes[i].angle * 0.2);
-                for(t = 0; t < _boxes[i].data.length; t++){
-                    c.fillText(_boxes[i].data[t], _boxes[i].position.x - cardWidth/2 + 5, _boxes[i].position.y - 25 + (t * 16), cardWidth);
+                for(t = 0; t < _boxes[i].data.title.length; t++){
+                    c.fillText(_boxes[i].data.title[t], _boxes[i].position.x - cardWidth/2 + 5, _boxes[i].position.y - 25 + (t * 16), cardWidth);
                 }
             }
             counter = 0;
         });
 
-
-
-        bind(p1, s1);
-        bind(p2, s1);
-
-        bind(p2, s2);
-        bind(s2, s3);
-        bind(s3, a2);
-        bind(s1, a1);
-
         World.add(_world, everything);
+        requestAnimationFrame(function(){
+            for(var i = 0; i < links.length; i++){
+                          var b1 = bodies.filter(function(body){
+                              return body.data.id == links[i][0];
+                          })[0];
+                          var b2 = bodies.filter(function(body){
+                              return body.data.id == links[i][1];
+                          })[0];
+                          bind(b1, b2);
+                      }
+        });
 
         var renderOptions = _engine.render.options;
         renderOptions.showShadows = true;
