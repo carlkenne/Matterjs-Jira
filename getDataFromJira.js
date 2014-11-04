@@ -10,11 +10,11 @@ var getNextStepsFromJira = function() {
 
 var getCards = function() {
     return [
-        {type:'issue', id:"1", fields: { summary: "Website can't be accessed over ssl", issuetype: { description: "the description of issue 1" } }},
-        {type:'issue', id:"2", fields: { summary: "Website is using an old version of jquery", issuetype: { description: "the description of issue 2" } }},
-        {type:'issue', id:"5", fields: { summary: "Static files are unnecessary large", issuetype: { description: "the description of issue 2" } }},
-        {type:'awesome', id:"3", fields: { summary: "SSL should be the default choice by the bank", issuetype: { description: "the definition of awesome 1" } }},
-        {type:'awesome', id:"4", fields: { summary: "Latest suitable version of all frameworks", issuetype: { description: "the definition of awesome 2" } }},
+        {active: true, type:'issue', id:"1", fields: { summary: "Website can't be accessed over ssl", issuetype: { description: "the description of issue 1" } }},
+        {active: true, type:'issue', id:"2", fields: { summary: "Website is using an old version of jquery", issuetype: { description: "the description of issue 2" } }},
+        {active: true, type:'issue', id:"5", fields: { summary: "Static files are unnecessary large", issuetype: { description: "the description of issue 2" } }},
+        {active: true, type:'awesome', id:"3", fields: { summary: "SSL should be the default choice by the bank", issuetype: { description: "the definition of awesome 1" } }},
+        {active: true, type:'awesome', id:"4", fields: { summary: "Latest suitable version of all frameworks", issuetype: { description: "the definition of awesome 2" } }},
     ];
 }
 

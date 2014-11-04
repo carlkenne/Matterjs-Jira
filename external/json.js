@@ -12,6 +12,7 @@ var jsonResponse = {
             "fields": {
                 "summary": "Minify all files",
                 "timetracking": null,
+                "status": "new",
                 "issuetype": {
                     "self": "http://kelpie9:8081/rest/api/2/issuetype/5",
                     "id": "5",
@@ -31,6 +32,7 @@ var jsonResponse = {
             "fields": {
                 "summary": "All files should be gzipped",
                 "timetracking": null,
+                "status": "new",
                 "issuetype": {
                     "self": "http://kelpie9:8081/rest/api/2/issuetype/3",
                     "id": "3",
@@ -49,6 +51,7 @@ var jsonResponse = {
             "fields": {
                 "summary": "build a tool for reporting links",
                 "timetracking": null,
+                "status": "new",
                 "issuetype": {
                     "self": "http://kelpie9:8081/rest/api/2/issuetype/5",
                     "id": "5",
@@ -68,6 +71,7 @@ var jsonResponse = {
             "fields": {
                 "summary": "change links from http to https",
                 "timetracking": null,
+                "status": "new",
                 "issuetype": {
                     "self": "http://kelpie9:8081/rest/api/2/issuetype/3",
                     "id": "3",
@@ -86,6 +90,7 @@ var jsonResponse = {
             "fields": {
                 "summary": "Copy all needed jquery.x files to prod",
                 "timetracking": null,
+                "status": "new",
                 "issuetype": {
                     "self": "http://kelpie9:8081/rest/api/2/issuetype/3",
                     "id": "3",
@@ -104,6 +109,7 @@ var jsonResponse = {
             "fields": {
                 "summary": "Upgrade jquery, page by page",
                 "timetracking": null,
+                "status": "new",
                 "issuetype": {
                     "self": "http://kelpie9:8081/rest/api/2/issuetype/3",
                     "id": "3",
@@ -122,6 +128,7 @@ var jsonResponse = {
             "fields": {
                 "summary": "Extract added code from jQuery",
                 "timetracking": null,
+                "status": "new",
                 "issuetype": {
                     "self": "http://kelpie9:8081/rest/api/2/issuetype/3",
                     "id": "3",

@@ -107,7 +107,7 @@
         var nextStepsRow = 200;
         var cardTypes = [
             {fillStyle:'#CC7777', row: 100, type: 'issue', frictionAir: 0.7},
-            {fillStyle:'#7777CC', row: 400, type: 'nextStep', frictionAir: 0.01},
+            {fillStyle:'#7777CC', fillStyleInactive: '#bbbbdd', fillStyleDone: '#7777FF', row: 400, type: 'nextStep', frictionAir: 0.01},
             {fillStyle:'#77CC77', row: 700, type: 'awesome', frictionAir: 0.7 }
         ];
         var bodies = [];
@@ -138,7 +138,12 @@
                return item.type == card.type;
             })[0];
 
-            var body = Bodies.rectangle(cardType.row, y * scale, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: cardType.fillStyle }});
+            var fillstyle = cardType.fillStyle;
+            if(!card.active){
+                fillstyle = cardType.fillStyleInactive;
+            }
+
+            var body = Bodies.rectangle(cardType.row, y * scale, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: fillstyle }});
             body.data = card;
             body.data.title = wrapText(card.fields.summary);
             body.data.body = wrapText(card.fields.issuetype.description);
@@ -192,6 +197,16 @@
         var createdIds = [];
         var y = 1;
 
+        var getCardsPointingTo = function(id){
+            return links.selectMany(function(x) {
+                return x.nextSteps;
+            }).filter(function(c){
+                return c[1] == id;
+            }).map(function(c){
+                return getCardBy(c[0]);
+            });
+        }
+
         var createCardsFromLinks = function(links){
             for(var i = 0; i < links.length; i++) {
                 createCard(links[i].issue);
@@ -201,7 +216,13 @@
 
                 for(var j = 0; j < all.length; j++){
                     if(createdIds.indexOf( all[j] ) == -1) {
-                        createCard(all[j]);
+                        var card = getCardBy(all[j]);
+                        card.active = getCardsPointingTo(all[j])
+                            .filter(function(t) {
+                                return t.type == "nextStep" && t.fields.status != "closed";
+                            }).length==0;
+                        bodies.push(createBody(card, y));
+                        createdIds.push(all[j]);
                     }
                 }
                 y++;
@@ -214,8 +235,6 @@
         var cards = getCards().concat(getNextStepsFromJira());
 
         createCardsFromLinks(links);
-
-
 
         Events.on(_engine, 'afterTick', function(event) {
             var _boxes = Composite.allBodies(everything);
