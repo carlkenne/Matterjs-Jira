@@ -1,3 +1,4 @@
+c = "";
 (function() {
 
     // Matter aliases
@@ -44,8 +45,9 @@
         var options = {
             positionIterations: 6,
             velocityIterations: 4,
-            enableSleeping: false
-
+            enableSleeping: false,
+            render: {options: {width: 1200, height: 700}},
+            world: {bounds: {max: { x: 2400, y: 1400 }}},
         };
 
         // create a Matter engine
@@ -84,7 +86,7 @@
 
     Demo.toyotaKata = function() {
         var _world = _engine.world;
-        var c = _engine.render.context;
+        c = _engine.render.context;
         var cardWidth = 120;
         var cardHeight = 80;
         var cardTextWidth = cardWidth - 25;
@@ -316,13 +318,35 @@
                     return getIdsRecursivlyPointingFrom(_id);
                 }).concat(id);
         }
+        var translate = {
+            x:0,
+            y:0
+        }
+
+        Events.on(_engine, 'mouseup', function(event) {
+            var _translatex = (_engine.render.options.width/2) - event.mouse.position.x;
+            var _translatey = (_engine.render.options.height/2) - event.mouse.position.y;
+            _translatex = Math.max(translate.x + _translatex, -_engine.render.options.width) - translate.x;
+            _translatex = Math.min(translate.x + _translatex, 0) - translate.x;
+            _translatey = Math.max(translate.y + _translatey, -_engine.render.options.height) - translate.y;
+            _translatey = Math.min(translate.y + _translatey, 0) - translate.y;
+            translate.y += _translatey;
+            translate.x += _translatex;
+            console.log(_translatex);
+            c.translate(_translatex,_translatey);
+        });
 
         Events.on(_engine, 'mousemove', function(event) {
-            Query.ray(bodies, event.mouse.position, { x:event.mouse.position.x + 1, y:event.mouse.position.y + 1 })
+            var pos = event.mouse.position;
+//            pos.x = event.mouse.position.x / 0.5 ;
+//            pos.y = event.mouse.position.y / 0.5;
+
+            Query.ray(bodies, pos, { x:pos.x + 1, y:pos.y + 1 })
                 .empty(function(){
                     setSolidOn(bodies);
                 })
                 .first(function(hit) {
+                    console.log(hit.body.data.title);
                     var show = !hit.body.render.hasHighlight;
                     everythingTransparent();
 
@@ -334,14 +358,10 @@
                             });
                     }
                 });
+
         });
 
-//        Events.on(_engine, 'mouseup', function(event) {
-//
-//        });
-
         // - - - - - - - - - - - -
-
 
         Events.on(_engine, 'afterTick', function(event) {
             c.font = "12px Arial";
@@ -361,6 +381,7 @@
         bindLinkedBodies(links);
         var renderOptions = _engine.render.options;
         renderOptions.showShadows = true;
+
     };
 
     Demo.initControls = function() {
@@ -486,10 +507,10 @@
 
         var offset = 5;
         World.add(_world, [
-            Bodies.rectangle(400, -offset, 800.5 + 2 * offset, 50.5, { isStatic: true }),
-            Bodies.rectangle(400, 600 + offset, 800.5 + 2 * offset, 50.5, { isStatic: true }),
-            Bodies.rectangle(800 + offset, 300, 50.5, 600.5 + 2 * offset, { isStatic: true }),
-            Bodies.rectangle(-offset, 300, 50.5, 600.5 + 2 * offset, { isStatic: true })
+            Bodies.rectangle((_world.bounds.max.x)/2, -offset, (_world.bounds.max.x) + 2 * offset, 50.5, { isStatic: true }),
+            Bodies.rectangle((_world.bounds.max.x)/2, (_world.bounds.max.y) + offset, (_world.bounds.max.x) + 2 * offset, 50.5, { isStatic: true }),
+            Bodies.rectangle((_world.bounds.max.x) + offset, (_world.bounds.max.y/2), 50.5, (_world.bounds.max.y) + 2 * offset, { isStatic: true }),
+            Bodies.rectangle(-offset, (_world.bounds.max.y/2), 50.5, (_world.bounds.max.y) + 2 * offset, { isStatic: true })
         ]);
 
         _mouseConstraint = MouseConstraint.create(_engine);
