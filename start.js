@@ -82,22 +82,6 @@
         window.attachEvent('load', Demo.init);
     }
 
-    Demo.airFriction = function() {
-        var _world = _engine.world;
-
-        Demo.reset();
-
-        World.add(_world, [
-            Bodies.rectangle(200, 100, 60, 60, { frictionAir: 0.001 }),
-            Bodies.rectangle(400, 100, 60, 60, { frictionAir: 0.05 }),
-            Bodies.rectangle(600, 100, 60, 60, { frictionAir: 0.1 })
-        ]);
-
-        var renderOptions = _engine.render.options;
-        renderOptions.showAngleIndicator = true;
-        renderOptions.showCollisions = true;
-    };
-
     Demo.toyotaKata = function() {
         var _world = _engine.world;
         var c = _engine.render.context;
@@ -106,9 +90,9 @@
         var cardTextWidth = cardWidth - 25;
         var nextStepsRow = 200;
         var cardTypes = [
-            {fillStyle:'#CC7777', row: 100, type: 'issue', frictionAir: 0.7},
-            {fillStyle:'#7777CC', fillStyleInactive: '#bbbbdd', fillStyleDone: '#7777FF', row: 400, type: 'nextStep', frictionAir: 0.01},
-            {fillStyle:'#77CC77', row: 700, type: 'awesome', frictionAir: 0.7 }
+            {fillStyle:'rgba(204, 119, 119, 1)', row: 100, type: 'issue', frictionAir: 0.7 },
+            {fillStyle:'rgba(119, 119, 204, 1)', fillStyleInactive: 'rgba(204, 204, 221, 1)', fillStyleDone: 'rgba(119, 119, 255, 1)', row: 400, type: 'nextStep', frictionAir: 0.01},
+            {fillStyle:'rgba(119, 204, 119, 1)', row: 700, type: 'awesome', frictionAir: 0.7 }
         ];
         var bodies = [];
 
@@ -136,7 +120,7 @@
         var createBody = function(card, scale) {
             var cardType = cardTypes.filter(function(item) {
                return item.type == card.type;
-            })[0];
+            }).first();
 
             var fillstyle = cardType.fillStyle;
             if(!card.active){
@@ -145,8 +129,11 @@
 
             var body = Bodies.rectangle(cardType.row, y * scale, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: fillstyle }});
             body.data = card;
+            body.render.originalStrokeStyle = body.render.strokeStyle = 'rgba(40, 40, 40, 1)';
+            console.log(body.render.strokeStyle);
             body.data.title = wrapText(card.fields.summary);
             body.data.body = wrapText(card.fields.issuetype.description);
+
             return body;
         }
 
@@ -158,21 +145,23 @@
                 length: 150,
                 render: {
                     lineWidth: 2,
-                    strokeStyle: 'rgba(150,150,0,0.4)   '
+                    strokeStyle: 'rgba(150,150,0,0.4)'
                 }
             });
             Composite.addConstraint(everything, c);
         };
 
+        var getBodyBy = function(id){
+            return bodies.filter(function(body) {
+                return body.data.id == id;
+            }).first()
+        }
+
         var bindLinkedBodies = function(links) {
             for(var i = 0; i < links.length; i++) {
                 for(var n = 0; n < links[i].nextSteps.length; n++) {
-                    var from = bodies.filter(function(body) {
-                        return body.data.id == links[i].nextSteps[n][0];
-                    })[0];
-                    var to = bodies.filter(function(body) {
-                        return body.data.id == links[i].nextSteps[n][1];
-                    })[0];
+                    var from = getBodyBy(links[i].nextSteps[n][0]);
+                    var to = getBodyBy(links[i].nextSteps[n][1]);
                     bindBodies(from, to);
                 }
             }
@@ -188,46 +177,76 @@
                 },[]);
         };
 
+        var getIdsPointingTo = function(id){
+            return links.selectMany(function(x) {
+                return x.nextSteps;
+            }).filter(function(c){
+                return c[1] == id;
+            }).map(function(c){
+                return c[0];
+            });
+        }
+
+        var getIdsPointingFrom = function(id){
+            return links.selectMany(function(x) {
+                return x.nextSteps;
+            }).filter(function(c) {
+                return c[0] == id;
+            }).map(function(c) {
+                return c[1];
+            });
+        }
+
+        var getCardsPointingTo = function(id){
+            return getIdsPointingTo(id).map(function(_id){
+                return getCardBy(_id);
+            })
+        }
+        var createdIds = [];
+        var y = 1;
+
+        var createCardsFromLinks = function(links){
+            links.forEach(function(link) {
+                createCard(link.issue);
+                createCard(link.awesome);
+
+                var all = link.nextSteps.selectMany(function(x) { return x; });
+                all.forEach(function(id){
+                    if(createdIds.indexOf( id ) == -1) {
+                        var card = getCardBy(id);
+                        card.active = getCardsPointingTo(id)
+                            .filter(function(t) {
+                                return t.type == "nextStep" && t.fields.status != "closed";
+                            }).length == 0;
+                        bodies.push(createBody(card, y));
+                        createdIds.push(id);
+                    }
+                });
+                y++;
+            });
+        }
 
         var createCard = function(id){
             var card = getCardBy(id);
             bodies.push(createBody(card, y));
             createdIds.push(id);
         }
-        var createdIds = [];
-        var y = 1;
 
-        var getCardsPointingTo = function(id){
-            return links.selectMany(function(x) {
-                return x.nextSteps;
-            }).filter(function(c){
-                return c[1] == id;
-            }).map(function(c){
-                return getCardBy(c[0]);
-            });
-        }
-
-        var createCardsFromLinks = function(links){
-            for(var i = 0; i < links.length; i++) {
-                createCard(links[i].issue);
-                createCard(links[i].awesome);
-
-                var all = links[i].nextSteps.selectMany(function(x) { return x; });
-
-                for(var j = 0; j < all.length; j++){
-                    if(createdIds.indexOf( all[j] ) == -1) {
-                        var card = getCardBy(all[j]);
-                        card.active = getCardsPointingTo(all[j])
-                            .filter(function(t) {
-                                return t.type == "nextStep" && t.fields.status != "closed";
-                            }).length==0;
-                        bodies.push(createBody(card, y));
-                        createdIds.push(all[j]);
-                    }
+        Array.prototype.first = function(fn){
+            if(this.length > 0){
+                if(fn){
+                    fn(this[0]);
                 }
-                y++;
+                return this[0];
             }
-        }
+        };
+
+        Array.prototype.empty = function(fn){
+            if(this.length == 0){
+                fn();
+            }
+            return this;
+        };
 
         Demo.reset();
 
@@ -236,17 +255,104 @@
 
         createCardsFromLinks(links);
 
+        // - - - - - Highlighting
+        var toTransparent = function(body){
+            body.render.fillStyle = body.render.fillStyle.replace(", 1)",", 0.3)");
+            body.render.strokeStyle = body.render.strokeStyle.replace(", 1)",", 0.3)");
+        }
+
+        var everythingTransparent = function() {
+            bodies.forEach(function(body){
+                toTransparent(body);
+            });
+        }
+
+        var toSolid = function(body) {
+            body.render.fillStyle = body.render.fillStyle.replace(", 0.3)",", 1)");
+            body.render.strokeStyle = body.render.strokeStyle.replace(", 0.3)",", 1)");
+        }
+
+        var setSolidOn = function(list) {
+            list.forEach(function(body) {
+                toSolid(body);
+            });
+        }
+
+        var showHighlight = function(card) {
+            card.render.hasHighlight = true;
+            card.render.strokeStyle = "rgba(255, 221, 0, 1)";
+            card.render.lineWidth = 3;
+        }
+
+        var hideHighlight = function(card) {
+            card.render.strokeStyle = card.render.originalStrokeStyle;
+            card.render.hasHighlight = false;
+            card.render.lineWidth = 1;
+        }
+
+        var hideAllHighlights = function() {
+            bodies.forEach(hideHighlight);
+        }
+
+        var getAllConnectedCards = function(id) {
+            var all = getIdsRecursivlyPointingTo(id)
+                .concat(getIdsRecursivlyPointingFrom(id))
+                .map(function(_id) {
+                    return getCardBy(_id);
+                });
+            return all;
+        }
+
+        var getIdsRecursivlyPointingTo = function(id){
+            return getIdsPointingTo(id)
+                .selectMany(function(_id) {
+                    return getIdsRecursivlyPointingTo(_id);
+                }).concat(id);
+        }
+
+        var getIdsRecursivlyPointingFrom = function(id){
+            return getIdsPointingFrom(id)
+                .selectMany(function(_id) {
+                    return getIdsRecursivlyPointingFrom(_id);
+                }).concat(id);
+        }
+
+        Events.on(_engine, 'mousemove', function(event) {
+            Query.ray(bodies, event.mouse.position, { x:event.mouse.position.x + 1, y:event.mouse.position.y + 1 })
+                .empty(function(){
+                    setSolidOn(bodies);
+                })
+                .first(function(hit) {
+                    var show = !hit.body.render.hasHighlight;
+                    everythingTransparent();
+
+                    if(show){
+                        getAllConnectedCards(hit.body.data.id)
+                            .map(function(c) {
+                                var body = getBodyBy(c.id);
+                                toSolid(body);
+                            });
+                    }
+                });
+        });
+
+//        Events.on(_engine, 'mouseup', function(event) {
+//
+//        });
+
+        // - - - - - - - - - - - -
+
+
         Events.on(_engine, 'afterTick', function(event) {
-            var _boxes = Composite.allBodies(everything);
             c.font = "12px Arial";
             c.fillStyle = 'rgba(255, 255, 255, 0.8)';
 
-            for(i = 0; i < _boxes.length; i++){
-                Body.rotate(_boxes[i], -_boxes[i].angle * 0.2);
-                for(t = 0; t < _boxes[i].data.title.length; t++){
-                    c.fillText(_boxes[i].data.title[t], _boxes[i].position.x - cardWidth/2 + 5, _boxes[i].position.y - 25 + (t * 16), cardWidth);
+            Composite.allBodies(everything).forEach(function(box){
+                Body.rotate(box, -box.angle * 0.2);
+                for(t = 0; t < box.data.title.length; t++){
+                    c.fillText(box.data.title[t], box.position.x - cardWidth/2 + 5, box.position.y - 25 + (t * 16), cardWidth);
                 }
-            }
+            });
             counter = 0;
         });
 
