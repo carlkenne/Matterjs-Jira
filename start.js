@@ -49,13 +49,8 @@ c = "";
             render: {options: {width: 1200, height: 700}},
             world: {bounds: {max: { x: 2400, y: 1400 }}},
         };
-
-        // create a Matter engine
-        // NOTE: this is actually Matter.Engine.create(), see the aliases at top of this file
         _engine = Engine.create(container, options);
 
-
-        // add a mouse controlled constraint
         _mouseConstraint = MouseConstraint.create(_engine);
         World.add(_engine.world, _mouseConstraint);
 
@@ -75,8 +70,6 @@ c = "";
         // set up demo interface (see end of this file)
         Demo.initControls();
     };
-
-    // call init when the page has loaded fully
 
     if (window.addEventListener) {
         window.addEventListener('load', Demo.init);
@@ -318,48 +311,115 @@ c = "";
                     return getIdsRecursivlyPointingFrom(_id);
                 }).concat(id);
         }
-        var translate = {
-            x:0,
-            y:0
+
+        // - - - - - - - - - - - -
+        // - - panning, not active...
+
+        var pan = { x:0, y:0 }
+        var scale = 1;
+
+        var getStepSum = function(requestedStep, currentValue, min, max){
+            var actualStep = Math.max(requestedStep + currentValue, min) - currentValue;
+            return Math.min(actualStep + currentValue, max) - currentValue;
         }
 
-        Events.on(_engine, 'mouseup', function(event) {
-            var _translatex = (_engine.render.options.width/2) - event.mouse.position.x;
-            var _translatey = (_engine.render.options.height/2) - event.mouse.position.y;
-            _translatex = Math.max(translate.x + _translatex, -_engine.render.options.width) - translate.x;
-            _translatex = Math.min(translate.x + _translatex, 0) - translate.x;
-            _translatey = Math.max(translate.y + _translatey, -_engine.render.options.height) - translate.y;
-            _translatey = Math.min(translate.y + _translatey, 0) - translate.y;
-            translate.y += _translatey;
-            translate.x += _translatex;
-            console.log(_translatex);
-            c.translate(_translatex,_translatey);
-        });
+        var translate = function(x, y) {
+            var viewPort = _engine.render.options.width / scale;
+            var translatexStep = getStepSum(x, pan.x, (_engine.render.options.width / scale) - _engine.world.bounds.max.x, 0);
+            var translateyStep = getStepSum(y, pan.y, (_engine.render.options.height / scale) - _engine.world.bounds.max.y, 0);
+            pan.x += translatexStep;
+            pan.y += translateyStep;
+            console.log(" x: " + x + " xstep: " + translatexStep + " pan.x: " + pan.x + " width: " +_engine.render.options.width);
+            c.translate(translatexStep*scale, translateyStep*scale);
+        }
 
+        Events.on(_engine, 'mouseup', function(event) {});
+
+        function highlightCard(hit) {
+            var show = !hit.body.render.hasHighlight;
+            everythingTransparent();
+
+            if (show) {
+                getAllConnectedCards(hit.body.data.id)
+                    .map(function (c) {
+                        var body = getBodyBy(c.id);
+                        toSolid(body);
+                    });
+            }
+            var cardInfo = document.querySelector(".current-card");
+            cardInfo.style.display = "block";
+            cardInfo.style.backgroundColor = hit.body.render.fillStyle;
+            cardInfo.style.border = "2px solid " + hit.body.render.strokeStyle;
+
+            cardInfo.innerHTML = "<h2>" + hit.body.data.title.join('') + "</h2>";
+            cardInfo.innerHTML += hit.body.data.body.join('');
+        }
+
+        var getRelativePosition = function(position) {
+            return {
+                x : (position.x / scale) + pan.x,
+                y : (position.y / scale) + pan.y
+            }
+        }
+
+        // - - - - - - - - - - - -
+        // - - zooming
         Events.on(_engine, 'mousemove', function(event) {
-            var pos = event.mouse.position;
-//            pos.x = event.mouse.position.x / 0.5 ;
-//            pos.y = event.mouse.position.y / 0.5;
+            var pos = getRelativePosition(event.mouse.position);
 
             Query.ray(bodies, pos, { x:pos.x + 1, y:pos.y + 1 })
                 .empty(function(){
                     setSolidOn(bodies);
+                    document.querySelector(".current-card").style.display = "none";
                 })
                 .first(function(hit) {
-                    console.log(hit.body.data.title);
-                    var show = !hit.body.render.hasHighlight;
-                    everythingTransparent();
-
-                    if(show){
-                        getAllConnectedCards(hit.body.data.id)
-                            .map(function(c) {
-                                var body = getBodyBy(c.id);
-                                toSolid(body);
-                            });
-                    }
+                    highlightCard(hit);
                 });
-
         });
+
+        // - - - - - - - - - - - -
+        // - - zooming
+
+        var getStepMultiply = function(requestedStep, currentValue, min, max){
+            var actualStep = Math.max(requestedStep * currentValue, min) / currentValue;
+            return Math.min(actualStep * currentValue, max) / currentValue;
+        }
+
+        document.querySelector("canvas").onmousewheel = function (event){
+            var viewPort = _engine.render.options.width / scale;
+            var mousex = event.clientX;
+            var mousey = event.clientY;
+            var scaleLimits = { min:0.5, max:1.5 };
+
+            var relativeMouse = getRelativePosition(event);
+            var wheel = event.wheelDelta/120;
+
+            var zoom = Math.pow(1 + Math.abs(wheel)/2 , wheel > 0 ? 1 : -1);
+            zoom = getStepMultiply( zoom, scale, scaleLimits.min, scaleLimits.max);
+
+            console.log("scale: " + scale);
+
+            c.translate(pan.x, pan.y); //reset
+            c.scale(zoom, zoom);
+            scale *= zoom;
+
+            var suggestedPan = {
+                x: relativeMouse.x - mousex / (scale),
+                y: relativeMouse.y - mousey / (scale)
+            }
+            var upperBounds = {
+                x: (_engine.world.bounds.max.x * scale) - _engine.render.options.width,
+                y: (_engine.world.bounds.max.y * scale) - _engine.render.options.height
+            };
+
+            pan.x = Math.max(0, Math.min(suggestedPan.x, upperBounds.x));
+            pan.y = Math.max(0, Math.min(suggestedPan.y, upperBounds.y));
+
+            c.translate(
+               -pan.x,
+               -pan.y
+            );
+        }
 
         // - - - - - - - - - - - -
 
