@@ -402,6 +402,7 @@ c = "";
             c.translate(pan.x, pan.y); //reset
             c.scale(zoom, zoom);
             scale *= zoom;
+            document.querySelector(".zoom-value").innerHTML = (scale + "").substr(0, 5);
 
             var suggestedPan = {
                 x: relativeMouse.x - mousex / (scale),
