@@ -18,7 +18,7 @@ var jsonResponse = {
                     "id": "5",
                     "description": "The sub-task of the issue",
                     "iconUrl": "http://kelpie9:8081/images/icons/issue_subtask.gif",
-                    "name": "Sub-task",
+                    "name": "Technical Debt",
                     "subtask": true
                 },
                 "customfield_10071": null
@@ -38,7 +38,7 @@ var jsonResponse = {
                     "id": "3",
                     "description": "A task that needs to be done.",
                     "iconUrl": "http://kelpie9:8081/images/icons/task.gif",
-                    "name": "Task",
+                    "name": "Technical Debt",
                     "subtask": false
                 },
                 "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions"
@@ -57,10 +57,16 @@ var jsonResponse = {
                     "id": "5",
                     "description": "The sub-task of the issue",
                     "iconUrl": "http://kelpie9:8081/images/icons/issue_subtask.gif",
-                    "name": "Sub-task",
+                    "name": "Technical Debt",
                     "subtask": true
                 },
-                "customfield_10071": null
+                "customfield_10071": null,
+                "issuelinks": [
+                	{ "outwardissue" : { "id" : "10005" } },
+                	{ "outwardissue" : { "id" : "10011" } },
+                	{ "inwardissue" : { "id" : "1" } },
+                	{ "inwardissue" : { "id" : "2" } },
+                ]
             },
             "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-62/transitions"
         },{
@@ -80,7 +86,11 @@ var jsonResponse = {
                     "name": "Task",
                     "subtask": false
                 },
-                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions"
+                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
+                               "issuelinks": [
+                	{ "outwardissue" : { "id" : "3" } },
+                	{ "inwardissue" : { "id" : "10231" } },
+                ]
             }
         },{
             "expand": "html",
@@ -96,10 +106,14 @@ var jsonResponse = {
                     "id": "3",
                     "description": "A task that needs to be done.",
                     "iconUrl": "http://kelpie9:8081/images/icons/task.gif",
-                    "name": "Task",
+                    "name": "Technical Debt",
                     "subtask": false
                 },
-                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions"
+                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
+                "issuelinks": [
+                	{ "outwardissue" : { "id" : "10011" } },
+                	{ "inwardissue" : { "id" : "10012" } },
+                ]
             }
         },{
             "expand": "html",
@@ -115,10 +129,15 @@ var jsonResponse = {
                     "id": "3",
                     "description": "A task that needs to be done.",
                     "iconUrl": "http://kelpie9:8081/images/icons/task.gif",
-                    "name": "Task",
+                    "name": "Technical Debt",
                     "subtask": false
                 },
-                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions"
+                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
+                "issuelinks": [
+                	{ "outwardissue" : { "id" : "4" } },
+                	{ "inwardissue" : { "id" : "10231" } },
+                	{ "inwardissue" : { "id" : "10001" } },
+                ]
             }
         },{
             "expand": "html",
@@ -134,10 +153,15 @@ var jsonResponse = {
                     "id": "3",
                     "description": "A task that needs to be done.",
                     "iconUrl": "http://kelpie9:8081/images/icons/task.gif",
-                    "name": "Task",
+                    "name": "Technical Debt",
                     "subtask": false
                 },
-                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions"
+                "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
+                
+                "issuelinks": [
+                	{ "outwardissue" : { "id" : "10001" } },
+                	{ "inwardissue" : { "id" : "2" } },
+                ] 
             }
         }
     ]

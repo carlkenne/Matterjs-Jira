@@ -8,24 +8,20 @@ var getNextStepsFromJira = function() {
     return nextSteps;
 }
 
-var getCards = function() {
-    return [
-        {active: true, type:'issue', id:"1", fields: { summary: "Website can't be accessed over ssl", issuetype: { description: "the description of issue 1" } }},
-        {active: true, type:'issue', id:"2", fields: { summary: "Website is using an old version of jquery", issuetype: { description: "the description of issue 2" } }},
-        {active: true, type:'issue', id:"5", fields: { summary: "Static files are unnecessary large", issuetype: { description: "the description of issue 2" } }},
-        {active: true, type:'awesome', id:"3", fields: { summary: "SSL should be the default choice by the bank", issuetype: { description: "the definition of awesome 1" } }},
-        {active: true, type:'awesome', id:"4", fields: { summary: "Latest suitable version of all frameworks", issuetype: { description: "the definition of awesome 2" } }},
-    ];
-}
-
-var getLinks = function() {
-    return [{
-        issue:"1",
-        awesome:"3",
-        nextSteps: [["1","10231"],["10231","10005"],["10005","3"]]
-    },{
-        issue:"2",
-        awesome:"4",
-        nextSteps: [["2","10231"],["10012","10001"],["2","10012"],["10231","10011"],["10001","10011"],["10011","4"]]
-    }];
+var getCards = function(callback) {
+    callback([
+        {active: true, type:'issue', id:"1", fields: { issueType: { name: "Defect" }, summary: "Website can't be accessed over ssl", description: "the description of issue 1", "issuelinks": [
+                	{ "outwardissue" : { "id" : "10231" } }
+                ] }},
+        {active: true, type:'issue', id:"2", fields: { issueType: { name: "Defect" }, summary: "Website is using an old version of jquery", description: "the description of issue 2" , "issuelinks": [
+                	{ "outwardissue" : { "id" : "10231" } },
+                	{ "outwardissue" : { "id" : "10012" } },
+                ]  }},
+        {active: true, type:'awesome', id:"3", fields: { issueType: { name: "Improvement" },  summary: "SSL should be the default choice by the bank", description: "the definition of awesome 1", "issuelinks": [
+                	{ "inwardissue" : { "id" : "10005" } }
+                ]   }},
+        {active: true, type:'awesome', id:"4", fields: { issueType: { name: "Improvement" },  summary: "Latest suitable version of all frameworks", description: "the definition of awesome 2", "issuelinks": [
+                	{ "inwardissue" : { "id" : "10011" } },
+                ] }},
+    ].concat(getNextStepsFromJira()));
 }

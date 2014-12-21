@@ -1,4 +1,12 @@
 c = "";
+
+Array.prototype.selectMany = function(fn) {
+	return this.map(fn)
+    	.reduce(function(x,y) {
+        	return x.concat(y);
+        },[]);
+};
+
 (function() {
 
     // Matter aliases
@@ -64,9 +72,12 @@ c = "";
         if (window.location.hash.length !== 0)
             _sceneName = window.location.hash.replace('#', '').replace('-inspect', '');
 
-        // set up a scene with bodies
-        Demo['toyotaKata']();
-
+		getCards(function(cards){
+			// set up a scene with bodies
+			var management = cardManagement(cards)
+    	    Demo['toyotaKata'](management);
+    	});
+        
         // set up demo interface (see end of this file)
         Demo.initControls();
     };
@@ -76,8 +87,82 @@ c = "";
     } else if (window.attachEvent) {
         window.attachEvent('load', Demo.init);
     }
+    
+    var cardManagement = (function(cards){
+      
+      
+    	var getAllConnectedCards = function(card) {
+            var all = getIdsRecursivlyPointingTo(card)
+                .concat(getIdsRecursivlyPointingFrom(card))
+                .map(function(_id) {
+                    return getCardBy(_id);
+                });
+            return all;
+        }
 
-    Demo.toyotaKata = function() {
+        var getIdsRecursivlyPointingTo = function(card){
+            return getCardsPointingTo(card)
+                .selectMany(function(c) {
+                    return getIdsRecursivlyPointingTo(c);
+                }).concat(card.id);
+        }
+
+        var getIdsRecursivlyPointingFrom = function(card){
+            return getCardsPointingFrom(card)
+                .selectMany(function(c) {
+                    return getIdsRecursivlyPointingFrom(c);
+                }).concat(card.id);
+        }
+        
+        var getCardsPointingFrom = function(card){
+            return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
+            		return c.outwardissue;
+        	    }).map(function(c){ 
+    	        	return getCardBy(c.outwardissue.id); 
+	            }) : [];
+        }
+        
+        var getCardBy = function(id){
+            var _cards = cards.filter(function(card){ return card.id == id});
+            console.assert(_cards.length == 1, "could not find card with id: " + id);
+            return _cards[0];
+        }
+        
+        var getIdsPointingTo = function(card){
+            return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
+            		return c.inwardissue;
+        	    }).map(function(c){ 
+    	        	return c.inwardissue.id; 
+	            }) : [];
+        }
+
+        var getIdsPointingFrom = function(card){
+                return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
+            		return c.outwardissue;
+        	    }).map(function(c){ 
+    	        	return c.outwardissue.id; 
+	            }) : [];
+        }
+
+        var getCardsPointingTo = function(card){
+            return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
+            		return c.inwardissue;
+        	    }).map(function(c){ 
+    	        	return getCardBy(c.inwardissue.id); 
+	            }) : [];
+        }
+      
+      return {
+      	getAllConnectedCards : getAllConnectedCards, 
+      	getIdsPointingTo : getIdsPointingTo,
+        getCards : function(){
+        	return cards;
+        }
+      };
+    });
+    
+
+    Demo.toyotaKata = function(cardManagement) {
         var _world = _engine.world;
         c = _engine.render.context;
         var cardWidth = 120;
@@ -93,7 +178,7 @@ c = "";
 
         var wrapText = function(text) {
             var returnArray = [];
-            var words = text.split(' ');
+            var words = text ? text.split(' '): '';
             var line = '';
 
             for(var n = 0; n < words.length; n++) {
@@ -127,7 +212,7 @@ c = "";
             body.render.originalStrokeStyle = body.render.strokeStyle = 'rgba(40, 40, 40, 1)';
             console.log(body.render.strokeStyle);
             body.data.title = wrapText(card.fields.summary);
-            body.data.body = wrapText(card.fields.issuetype.description);
+            body.data.body = wrapText(card.fields.description);
 
             return body;
         }
@@ -152,79 +237,20 @@ c = "";
             }).first()
         }
 
-        var bindLinkedBodies = function(links) {
-            for(var i = 0; i < links.length; i++) {
-                for(var n = 0; n < links[i].nextSteps.length; n++) {
-                    var from = getBodyBy(links[i].nextSteps[n][0]);
-                    var to = getBodyBy(links[i].nextSteps[n][1]);
-                    bindBodies(from, to);
-                }
-            }
+        var bindLinkedBodies = function(cards) {
+        	cards.forEach(function(to){
+        		if(to.id == "4") debugger
+        		cardManagement.getIdsPointingTo(to).forEach(function(fromId){
+        			
+	        		bindBodies(getBodyBy(fromId), getBodyBy(to.id));
+        		})
+        	});
         }
-        var getCardBy = function(id){
-            return cards.filter(function(card){ return card.id == id})[0];
-        }
-
-        Array.prototype.selectMany = function(fn) {
-            return this.map(fn)
-                .reduce(function(x,y) {
-                    return x.concat(y);
-                },[]);
-        };
-
-        var getIdsPointingTo = function(id){
-            return links.selectMany(function(x) {
-                return x.nextSteps;
-            }).filter(function(c){
-                return c[1] == id;
-            }).map(function(c){
-                return c[0];
-            });
-        }
-
-        var getIdsPointingFrom = function(id){
-            return links.selectMany(function(x) {
-                return x.nextSteps;
-            }).filter(function(c) {
-                return c[0] == id;
-            }).map(function(c) {
-                return c[1];
-            });
-        }
-
-        var getCardsPointingTo = function(id){
-            return getIdsPointingTo(id).map(function(_id){
-                return getCardBy(_id);
-            })
-        }
-        var createdIds = [];
+        
         var y = 1;
 
-        var createCardsFromLinks = function(links){
-            links.forEach(function(link) {
-                createCard(link.issue);
-                createCard(link.awesome);
-
-                var all = link.nextSteps.selectMany(function(x) { return x; });
-                all.forEach(function(id){
-                    if(createdIds.indexOf( id ) == -1) {
-                        var card = getCardBy(id);
-                        card.active = getCardsPointingTo(id)
-                            .filter(function(t) {
-                                return t.type == "nextStep" && t.fields.status != "closed";
-                            }).length == 0;
-                        bodies.push(createBody(card, y));
-                        createdIds.push(id);
-                    }
-                });
-                y++;
-            });
-        }
-
-        var createCard = function(id){
-            var card = getCardBy(id);
-            bodies.push(createBody(card, y));
-            createdIds.push(id);
+        var createCard = function(card){
+            bodies.push(createBody(card, y++));
         }
 
         Array.prototype.first = function(fn){
@@ -244,11 +270,7 @@ c = "";
         };
 
         Demo.reset();
-
-        var links = getLinks();
-        var cards = getCards().concat(getNextStepsFromJira());
-
-        createCardsFromLinks(links);
+        cardManagement.getCards().forEach(createCard);
 
         // - - - - - Highlighting
         var toTransparent = function(body){
@@ -289,28 +311,7 @@ c = "";
             bodies.forEach(hideHighlight);
         }
 
-        var getAllConnectedCards = function(id) {
-            var all = getIdsRecursivlyPointingTo(id)
-                .concat(getIdsRecursivlyPointingFrom(id))
-                .map(function(_id) {
-                    return getCardBy(_id);
-                });
-            return all;
-        }
 
-        var getIdsRecursivlyPointingTo = function(id){
-            return getIdsPointingTo(id)
-                .selectMany(function(_id) {
-                    return getIdsRecursivlyPointingTo(_id);
-                }).concat(id);
-        }
-
-        var getIdsRecursivlyPointingFrom = function(id){
-            return getIdsPointingFrom(id)
-                .selectMany(function(_id) {
-                    return getIdsRecursivlyPointingFrom(_id);
-                }).concat(id);
-        }
 
         // - - - - - - - - - - - -
         // - - panning, not active...
@@ -340,7 +341,7 @@ c = "";
             everythingTransparent();
 
             if (show) {
-                getAllConnectedCards(hit.body.data.id)
+                cardManagement.getAllConnectedCards(hit.body.data)
                     .map(function (c) {
                         var body = getBodyBy(c.id);
                         toSolid(body);
@@ -439,7 +440,7 @@ c = "";
 
         var everything = Composite.create({bodies:bodies});
         World.add(_world, everything);
-        bindLinkedBodies(links);
+        bindLinkedBodies(cardManagement.getCards());
         var renderOptions = _engine.render.options;
         renderOptions.showShadows = true;
 
