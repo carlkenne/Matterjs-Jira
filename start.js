@@ -89,8 +89,23 @@ Array.prototype.selectMany = function(fn) {
     }
     
     var cardManagement = (function(cards){
-      
-      
+  
+        var setActiveFlagOnCards = function(){
+            var nextSteps = cards.filter(function(c){
+                return c.type == "nextStep";
+            });            
+            nextSteps.forEach(function(c) { 
+                c.active = getCardsPointingTo(c).every(function(sc){
+                    return sc.type == "issue" || (sc.fields.resolution && sc.fields.resolution.name == "Fixed");
+                })
+            });
+            nextSteps.filter(function(c){
+                return (c.fields.resolution && c.fields.resolution.name == "Fixed");
+            }).forEach(function(c) {               
+                c.active = "fixed";                
+            });
+        };
+        
     	var getAllConnectedCards = function(card) {
             var all = getIdsRecursivlyPointingTo(card)
                 .concat(getIdsRecursivlyPointingFrom(card))
@@ -116,9 +131,9 @@ Array.prototype.selectMany = function(fn) {
         
         var getCardsPointingFrom = function(card){
             return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
-            		return c.outwardissue;
+            		return c.outwardIssue;
         	    }).map(function(c){ 
-    	        	return getCardBy(c.outwardissue.id); 
+    	        	return getCardBy(c.outwardIssue.id); 
 	            }) : [];
         }
         
@@ -130,27 +145,29 @@ Array.prototype.selectMany = function(fn) {
         
         var getIdsPointingTo = function(card){
             return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
-            		return c.inwardissue;
+            		return c.inwardIssue;
         	    }).map(function(c){ 
-    	        	return c.inwardissue.id; 
+    	        	return c.inwardIssue.id; 
 	            }) : [];
         }
 
         var getIdsPointingFrom = function(card){
                 return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
-            		return c.outwardissue;
+            		return c.outwardIssue;
         	    }).map(function(c){ 
-    	        	return c.outwardissue.id; 
+    	        	return c.outwardIssue.id; 
 	            }) : [];
         }
 
         var getCardsPointingTo = function(card){
             return card.fields.issuelinks ? card.fields.issuelinks.filter(function(c) { 
-            		return c.inwardissue;
+            		return c.inwardIssue;
         	    }).map(function(c){ 
-    	        	return getCardBy(c.inwardissue.id); 
+    	        	return getCardBy(c.inwardIssue.id); 
 	            }) : [];
         }
+      
+      setActiveFlagOnCards();
       
       return {
       	getAllConnectedCards : getAllConnectedCards, 
@@ -211,7 +228,7 @@ Array.prototype.selectMany = function(fn) {
             body.data = card;
             body.render.originalStrokeStyle = body.render.strokeStyle = 'rgba(40, 40, 40, 1)';
             console.log(body.render.strokeStyle);
-            body.data.title = wrapText(card.fields.summary);
+            body.data.title = wrapText("["+card.key+"] "+card.fields.summary);
             body.data.body = wrapText(card.fields.description);
 
             return body;
@@ -239,7 +256,6 @@ Array.prototype.selectMany = function(fn) {
 
         var bindLinkedBodies = function(cards) {
         	cards.forEach(function(to){
-        		if(to.id == "4") debugger
         		cardManagement.getIdsPointingTo(to).forEach(function(fromId){
         			
 	        		bindBodies(getBodyBy(fromId), getBodyBy(to.id));
@@ -363,8 +379,7 @@ Array.prototype.selectMany = function(fn) {
             }
         }
 
-        // - - - - - - - - - - - -
-        // - - zooming
+
         Events.on(_engine, 'mousemove', function(event) {
             var pos = getRelativePosition(event.mouse.position);
 
@@ -378,25 +393,31 @@ Array.prototype.selectMany = function(fn) {
                 });
         });
 
-        // - - - - - - - - - - - -
-        // - - zooming
-
         var getStepMultiply = function(requestedStep, currentValue, min, max){
             var actualStep = Math.max(requestedStep * currentValue, min) / currentValue;
             return Math.min(actualStep * currentValue, max) / currentValue;
         }
+        
+        document.querySelector(".zoom-reset").addEventListener('click', function(){
+        	applyZoom(1.0/scale, pan, pan.x, pan.y);
+        });
 
-        document.querySelector("canvas").onmousewheel = function (event){
-            var viewPort = _engine.render.options.width / scale;
-            var mousex = event.clientX;
+        document.querySelector("canvas").onmousewheel = function (event) {
+	        var relativeMouse = getRelativePosition(event);
+	        var mousex = event.clientX;
             var mousey = event.clientY;
-            var scaleLimits = { min:0.5, max:1.5 };
-
-            var relativeMouse = getRelativePosition(event);
             var wheel = event.wheelDelta/120;
-
+			var viewPort = _engine.render.options.width / scale;
+            
+            var scaleLimits = { min:0.5, max:1.5 };
+            
             var zoom = Math.pow(1 + Math.abs(wheel)/2 , wheel > 0 ? 1 : -1);
             zoom = getStepMultiply( zoom, scale, scaleLimits.min, scaleLimits.max);
+            
+        	applyZoom(zoom, relativeMouse, mousex, mousey);
+        }
+
+		function applyZoom(zoom, relativePosition,x,y) {
 
             console.log("scale: " + scale);
 
@@ -406,8 +427,8 @@ Array.prototype.selectMany = function(fn) {
             document.querySelector(".zoom-value").innerHTML = (scale + "").substr(0, 5);
 
             var suggestedPan = {
-                x: relativeMouse.x - mousex / (scale),
-                y: relativeMouse.y - mousey / (scale)
+                x: relativePosition.x - x / (scale),
+                y: relativePosition.y - y / (scale)
             }
             var upperBounds = {
                 x: (_engine.world.bounds.max.x * scale) - _engine.render.options.width,
@@ -421,7 +442,7 @@ Array.prototype.selectMany = function(fn) {
                -pan.x,
                -pan.y
             );
-        }
+		}
 
         // - - - - - - - - - - - -
 
@@ -430,7 +451,7 @@ Array.prototype.selectMany = function(fn) {
             c.fillStyle = 'rgba(255, 255, 255, 0.8)';
 
             Composite.allBodies(everything).forEach(function(box){
-                Body.rotate(box, -box.angle * 0.2);
+                Body.rotate(box, -box.angle);
                 for(t = 0; t < box.data.title.length; t++){
                     c.fillText(box.data.title[t], box.position.x - cardWidth/2 + 5, box.position.y - 25 + (t * 16), cardWidth);
                 }

@@ -62,10 +62,10 @@ var jsonResponse = {
                 },
                 "customfield_10071": null,
                 "issuelinks": [
-                	{ "outwardissue" : { "id" : "10005" } },
-                	{ "outwardissue" : { "id" : "10011" } },
-                	{ "inwardissue" : { "id" : "1" } },
-                	{ "inwardissue" : { "id" : "2" } },
+                	{ "outwardIssue" : { "id" : "10005" } },
+                	{ "outwardIssue" : { "id" : "10011" } },
+                	{ "inwardIssue" : { "id" : "1" } },
+                	{ "inwardIssue" : { "id" : "2" } },
                 ]
             },
             "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-62/transitions"
@@ -88,8 +88,8 @@ var jsonResponse = {
                 },
                 "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
                                "issuelinks": [
-                	{ "outwardissue" : { "id" : "3" } },
-                	{ "inwardissue" : { "id" : "10231" } },
+                	{ "outwardIssue" : { "id" : "3" } },
+                	{ "inwardIssue" : { "id" : "10231" } },
                 ]
             }
         },{
@@ -111,8 +111,8 @@ var jsonResponse = {
                 },
                 "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
                 "issuelinks": [
-                	{ "outwardissue" : { "id" : "10011" } },
-                	{ "inwardissue" : { "id" : "10012" } },
+                	{ "outwardIssue" : { "id" : "10011" } },
+                	{ "inwardIssue" : { "id" : "10012" } },
                 ]
             }
         },{
@@ -134,9 +134,9 @@ var jsonResponse = {
                 },
                 "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
                 "issuelinks": [
-                	{ "outwardissue" : { "id" : "4" } },
-                	{ "inwardissue" : { "id" : "10231" } },
-                	{ "inwardissue" : { "id" : "10001" } },
+                	{ "outwardIssue" : { "id" : "4" } },
+                	{ "inwardIssue" : { "id" : "10231" } },
+                	{ "inwardIssue" : { "id" : "10001" } },
                 ]
             }
         },{
@@ -159,8 +159,8 @@ var jsonResponse = {
                 "transitions": "http://kelpie9:8081/rest/api/2/issue/BULK-47/transitions",
                 
                 "issuelinks": [
-                	{ "outwardissue" : { "id" : "10001" } },
-                	{ "inwardissue" : { "id" : "2" } },
+                	{ "outwardIssue" : { "id" : "10001" } },
+                	{ "inwardIssue" : { "id" : "2" } },
                 ] 
             }
         }
