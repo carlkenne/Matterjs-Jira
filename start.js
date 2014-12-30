@@ -1,5 +1,4 @@
 //todo: scale text?
-//zoom to mouse cursor
 
 c = "";
 
@@ -240,19 +239,7 @@ Array.prototype.selectMany = function(fn) {
             bodies.forEach(hideHighlight);
         }
 
-
-
-        // - - - - - - - - - - - -
-        // - - panning, not active...
-
-        var pan = { x:0, y:0 }
         var scale = 1;
-
-        //-15, 10, -2, 20 = -12
-        var getStepSum = function(requestedStep, currentValue, min, max){
-            var actualStep = Math.max(requestedStep + currentValue, min) - currentValue;
-            return Math.min(actualStep + currentValue, max) - currentValue;
-        }
 
         function highlightCard(hit) {
             var show = !hit.body.render.hasHighlight;
@@ -272,21 +259,6 @@ Array.prototype.selectMany = function(fn) {
 
             cardInfo.innerHTML = "<h2>" + hit.body.data.title.join('') + "</h2>";
             cardInfo.innerHTML += hit.body.data.body.join('');
-        }
-
-        var getRelativePosition = function(position) {
-            return {
-                x : (position.x / scale),
-                y : (position.y / scale)
-            }
-        }
- 
-        var getRenderWidth = function(){
-            return _engine.render.options.width*scale;
-        }
- 
-        var getRenderHeight = function(){
-            return _engine.render.options.height*scale;
         }
  
         Events.on(_engine, 'mousemove', function(event) {
@@ -328,10 +300,8 @@ Array.prototype.selectMany = function(fn) {
         });
 
         document.querySelector("canvas").onmousewheel = function (event) {
-	        var relativeMouse = getRelativePosition(event);
             var mouse = {x: event.clientX, y: event.clientY};
             var wheel = event.wheelDelta / 120;
-			var viewPort = _engine.render.options.width / scale;
             
             var scaleLimits = { min:0.5, max:1.5 };
             
