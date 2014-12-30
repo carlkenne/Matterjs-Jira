@@ -1,6 +1,3 @@
-//todo: scale text?
-//zoom to mouse cursor
-
 c = "";
 
 Array.prototype.selectMany = function(fn) {
@@ -57,8 +54,8 @@ Array.prototype.selectMany = function(fn) {
             positionIterations: 6,
             velocityIterations: 4,
             enableSleeping: false,
-            render: {options: {width: 1200, height: 700}, bounds: {max: { x: 1200, y: 700 }, min:{ x: 0, y: 0 }}},
-            world: {bounds: {max: { x: 2400, y: 1400 },min:{x:0, y:0}}},
+            render: {options: {width: 1200, height: 700}, bounds: {max: { x: 1800, y: 1050 }, min:{ x: 0, y: 0 }}},
+            world: {bounds: {max: { x: 2400, y: 1400 }}},
         };
         _engine = Engine.create(container, options);
 
@@ -248,11 +245,22 @@ Array.prototype.selectMany = function(fn) {
         var pan = { x:0, y:0 }
         var scale = 1;
 
-        //-15, 10, -2, 20 = -12
         var getStepSum = function(requestedStep, currentValue, min, max){
             var actualStep = Math.max(requestedStep + currentValue, min) - currentValue;
             return Math.min(actualStep + currentValue, max) - currentValue;
         }
+
+        var translate = function(x, y) {
+            var viewPort = _engine.render.options.width / scale;
+            var translatexStep = getStepSum(x, pan.x, (_engine.render.options.width / scale) - _engine.world.bounds.max.x, 0);
+            var translateyStep = getStepSum(y, pan.y, (_engine.render.options.height / scale) - _engine.world.bounds.max.y, 0);
+            pan.x += translatexStep;
+            pan.y += translateyStep;
+            console.log(" x: " + x + " xstep: " + translatexStep + " pan.x: " + pan.x + " width: " +_engine.render.options.width);
+            c.translate(translatexStep*scale, translateyStep*scale);
+        }
+
+        Events.on(_engine, 'mouseup', function(event) {});
 
         function highlightCard(hit) {
             var show = !hit.body.render.hasHighlight;
@@ -276,27 +284,20 @@ Array.prototype.selectMany = function(fn) {
 
         var getRelativePosition = function(position) {
             return {
-                x : (position.x / scale),
-                y : (position.y / scale)
+                x : (position.x / scale) + pan.x,
+                y : (position.y / scale) + pan.y
             }
         }
- 
-        var getRenderWidth = function(){
-            return _engine.render.options.width*scale;
-        }
- 
-        var getRenderHeight = function(){
-            return _engine.render.options.height*scale;
-        }
- 
-        Events.on(_engine, 'mousemove', function(event) {
 
-            if(!_mouseConstraint.constraint.bodyB && event.mouse.button == 0) {
-                panBackground(event);
-                return;
-            }
-            
-            Query.ray(bodies, event.mouse.position, Math2d.sum(event.mouse.position,{x:1, y:1}))
+		var lastMouse = 0;
+		Events.on(_engine, 'mousedown', function(event) {
+			lastMouse = event.mouse.position;
+		});
+
+        Events.on(_engine, 'mousemove', function(event) {
+            var pos = getRelativePosition(event.mouse.position);
+
+            Query.ray(bodies, pos, { x:pos.x + 1, y:pos.y + 1 })
                 .empty(function(){
                     setSolidOn(bodies);
                     document.querySelector(".current-card").style.display = "none";
@@ -304,10 +305,18 @@ Array.prototype.selectMany = function(fn) {
                 .first(function(hit) {
                     highlightCard(hit);
                 });
-        });
- 
-        Events.on(_engine, 'mouseup', function(event) {
-            Mouse.setOffset(_engine.input.mouse, _engine.render.bounds.min );
+                
+            if(event.mouse.button == 0)
+            {
+            	c.translate(
+               		event.mouse.position.x - lastMouse.x,
+              		0
+            	);
+            
+	            lastMouse = event.mouse.position;
+	            
+            	console.log()
+            }
         });
 
         var getStepMultiply = function(requestedStep, currentValue, min, max){
@@ -316,21 +325,14 @@ Array.prototype.selectMany = function(fn) {
         }
         
         document.querySelector(".zoom-reset").addEventListener('click', function(){
-        	applyZoom(1.0/scale, _engine.render.bounds.min);
-        });
- 
-        document.querySelector(".zoom-in").addEventListener('click', function(){
-            applyZoom(1.1/scale, _engine.render.bounds.min);
-        });
- 
-        document.querySelector(".zoom-out").addEventListener('click', function(){
-            applyZoom(0.9/scale, _engine.render.bounds.min);
+        	applyZoom(1.0/scale, pan, pan.x, pan.y);
         });
 
         document.querySelector("canvas").onmousewheel = function (event) {
 	        var relativeMouse = getRelativePosition(event);
-            var mouse = {x: event.clientX, y: event.clientY};
-            var wheel = event.wheelDelta / 120;
+	        var mousex = event.clientX;
+            var mousey = event.clientY;
+            var wheel = event.wheelDelta/120;
 			var viewPort = _engine.render.options.width / scale;
             
             var scaleLimits = { min:0.5, max:1.5 };
@@ -338,37 +340,37 @@ Array.prototype.selectMany = function(fn) {
             var zoom = Math.pow(1 + Math.abs(wheel)/2 , wheel > 0 ? 1 : -1);
             zoom = getStepMultiply( zoom, scale, scaleLimits.min, scaleLimits.max);
             
-        	applyZoom(zoom, mouse);
-        }
- 
-        var panBackground = function(event) {
-                var panAmount = { x: event.mouse.mousedownPosition.x - event.mouse.position.x , y: event.mouse.mousedownPosition.y - event.mouse.position.y }
-                _engine.render.bounds = Math2d.translateQuad(_engine.render.bounds, panAmount, _engine.world.bounds)
-                Mouse.setOffset(_engine.input.mouse,  _engine.render.bounds.min);
+        	applyZoom(zoom, relativeMouse, mousex, mousey);
         }
 
-		function applyZoom(zoomStep, mousePosition) {
+		function applyZoom(zoom, relativePosition,x,y) {
 
-            scale *= zoomStep;
+            console.log("scale: " + scale);
+
+            c.translate(pan.x, pan.y); //reset
+            c.scale(zoom, zoom);
+            scale *= zoom;
             document.querySelector(".zoom-value").innerHTML = (scale + "").substr(0, 5);
- 
-            var diff = Math2d.diff(_engine.render.bounds.max, _engine.render.bounds.min);
-            var xPixelStep = (diff.x * zoomStep)-diff.x;
-            var xBalance = (mousePosition.x / _engine.render.options.width);
- 
-            _engine.render.bounds.max.x += xPixelStep * (1 - xBalance);
-            _engine.render.bounds.min.x -= xPixelStep * xBalance;
- 
-            var yPixelStep = (diff.y * zoomStep) - diff.y;
-            var yBalance = (mousePosition.y / _engine.render.options.height);
-            _engine.render.bounds.max.y += yPixelStep * (1-yBalance);
-            _engine.render.bounds.min.y -= yPixelStep * yBalance;
- 
-            _engine.render.bounds = Math2d.translateQuad(_engine.render.bounds, {x: 0, y: 0}, _engine.world.bounds);
- 
-            Mouse.setScale(_engine.input.mouse, {x:scale, y:scale});
-            Mouse.setOffset(_engine.input.mouse,  _engine.render.bounds.min);
+
+            var suggestedPan = {
+                x: relativePosition.x - x / (scale),
+                y: relativePosition.y - y / (scale)
+            }
+            var upperBounds = {
+                x: (_engine.world.bounds.max.x * scale) - _engine.render.options.width,
+                y: (_engine.world.bounds.max.y * scale) - _engine.render.options.height
+            };
+
+            pan.x = Math.max(0, Math.min(suggestedPan.x, upperBounds.x));
+            pan.y = Math.max(0, Math.min(suggestedPan.y, upperBounds.y));
+
+            c.translate(
+               -pan.x,
+               -pan.y
+            );
 		}
+
+        // - - - - - - - - - - - -
 
         Events.on(_engine, 'afterTick', function(event) {
             c.font = "12px Arial";
@@ -377,10 +379,7 @@ Array.prototype.selectMany = function(fn) {
             Composite.allBodies(everything).forEach(function(box){
                 Body.rotate(box, -box.angle);
                 for(t = 0; t < box.data.title.length; t++){
-                    c.fillText(box.data.title[t],
-                               (box.position.x - _engine.render.bounds.min.x)/scale - (cardWidth/scale)/2 + 5,
-                               (box.position.y - _engine.render.bounds.min.y)/scale - 25 + (t * 16),
-                               cardWidth/scale);
+                    c.fillText(box.data.title[t], box.position.x - cardWidth/2 + 5, box.position.y - 25 + (t * 16), cardWidth);
                 }
             });
             counter = 0;
@@ -528,7 +527,7 @@ Array.prototype.selectMany = function(fn) {
 
         var renderOptions = _engine.render.options;
         renderOptions.wireframes = false;
-        renderOptions.hasBounds = true;
+        renderOptions.hasBounds = false;
         renderOptions.showDebug = true;
         renderOptions.showBroadphase = false;
         renderOptions.showBounds = true;
