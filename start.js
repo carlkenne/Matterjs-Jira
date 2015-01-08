@@ -163,8 +163,10 @@ var wrapText = function(text, width) {
             if(!card.active){
                 fillstyle = cardType.fillStyleInactive;
             }
-
-            var body = Bodies.rectangle(cardType.row, yCreatePosition * ypos, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: fillstyle }});
+            var store = localStorage.getItem(card.id);
+            var pos = store ? JSON.parse(store) : { x: cardType.row, y: yCreatePosition * ypos};
+ 
+            var body = Bodies.rectangle(pos.x, pos.y, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: fillstyle }});
             body.data = card;
             body.render.originalStrokeStyle = body.render.strokeStyle = 'rgba(40, 40, 40, 1)';
             console.log(body.render.strokeStyle);
@@ -304,6 +306,13 @@ var wrapText = function(text, width) {
         document.querySelector(".zoom-out").addEventListener('click', function(){
             applyZoom(0.9/_engine.render.scale, _engine.render.bounds.min);
         });
+ 
+        document.querySelector(".save-state").addEventListener('click', function(){
+            bodies.forEach(function(body){
+                localStorage.setItem(body.data.id, JSON.stringify(body.position));
+            });
+        });
+
 
         document.querySelector("canvas").onmousewheel = function (event) {
             var mouse = {x: event.clientX, y: event.clientY};
