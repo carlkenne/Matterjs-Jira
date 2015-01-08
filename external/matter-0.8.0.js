@@ -5251,11 +5251,15 @@ var Render = {};
 
         if (options.showDebug)
             Render.debug(engine, context);
-
+ 
+        //carl, this on needed to be fired to cater for zommed text..
+        Events.trigger(engine, 'onRender', event);
+ 
         if (options.hasBounds) {
             // revert view transforms
             context.setTransform(1, 0, 0, 1, 0, 0);
         }
+ 
     };
 
     /**

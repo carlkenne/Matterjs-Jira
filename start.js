@@ -1,6 +1,10 @@
-//todo: scale text?
+//todo: add scaled text as pull request?
+
 
 c = "";
+
+//general functions, move to abetter place
+//-----------------------------------------
 
 Array.prototype.selectMany = function(fn) {
 	return this.map(fn)
@@ -8,6 +12,44 @@ Array.prototype.selectMany = function(fn) {
         	return x.concat(y);
         },[]);
 };
+
+Array.prototype.first = function(fn){
+    if(this.length > 0){
+        if(fn){
+            fn(this[0]);
+        }
+        return this[0];
+    }
+};
+
+Array.prototype.empty = function(fn){
+    if(this.length == 0){
+        fn();
+    }
+    return this;
+};
+
+var wrapText = function(text, width) {
+    var returnArray = [];
+    var words = text ? text.split(' '): '';
+    var line = '';
+    
+    for(var n = 0; n < words.length; n++) {
+        var testLine = line + words[n] + ' ';
+        var metrics = c.measureText(testLine);
+        var testWidth = metrics.width;
+        if (testWidth > width && n > 0) {
+            returnArray.push(line);
+            line = words[n] + ' ';
+        }
+        else {
+            line = testLine;
+        }
+    }
+    returnArray.push(line);
+    return returnArray;
+};
+//-----------------------------------------
 
 (function() {
 
@@ -89,11 +131,16 @@ Array.prototype.selectMany = function(fn) {
     } else if (window.attachEvent) {
         window.attachEvent('load', Demo.init);
     }
-    
+ 
+ 
+    ZoomBehaviour = function(_engine){
+        //var =
+    }
 
     Demo.toyotaKata = function(cardManagement) {
         var _world = _engine.world;
         c = _engine.render.context;
+             c.font = "12px Arial";
         var cardWidth = 120;
         var cardHeight = 80;
         var cardTextWidth = cardWidth - 25;
@@ -104,29 +151,10 @@ Array.prototype.selectMany = function(fn) {
             {fillStyle:'rgba(119, 204, 119, 1)', row: 700, type: 'awesome', frictionAir: 0.7 }
         ];
         var bodies = [];
+        _engine.render.scale = 1;
+        var yCreatePosition = 1;
 
-        var wrapText = function(text) {
-            var returnArray = [];
-            var words = text ? text.split(' '): '';
-            var line = '';
-
-            for(var n = 0; n < words.length; n++) {
-                var testLine = line + words[n] + ' ';
-                var metrics = c.measureText(testLine);
-                var testWidth = metrics.width;
-                if (testWidth > cardTextWidth && n > 0) {
-                    returnArray.push(line);
-                    line = words[n] + ' ';
-                }
-                else {
-                    line = testLine;
-                }
-            }
-            returnArray.push(line);
-            return returnArray;
-        }
-
-        var createBody = function(card, scale) {
+        var createBody = function(card, ypos) {
             var cardType = cardTypes.filter(function(item) {
                return item.type == card.type;
             }).first();
@@ -136,29 +164,15 @@ Array.prototype.selectMany = function(fn) {
                 fillstyle = cardType.fillStyleInactive;
             }
 
-            var body = Bodies.rectangle(cardType.row, y * scale, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: fillstyle }});
+            var body = Bodies.rectangle(cardType.row, yCreatePosition * ypos, cardWidth, cardHeight, { frictionAir: cardType.frictionAir, chamfer: 10, render: { fillStyle: fillstyle }});
             body.data = card;
             body.render.originalStrokeStyle = body.render.strokeStyle = 'rgba(40, 40, 40, 1)';
             console.log(body.render.strokeStyle);
-            body.data.title = wrapText("["+card.key+"] "+card.fields.summary);
-            body.data.body = wrapText(card.fields.description);
+            body.data.title = wrapText("["+card.key+"] "+card.fields.summary, cardTextWidth);
+            body.data.body = wrapText(card.fields.description, cardTextWidth);
 
             return body;
         }
-
-        var bindBodies = function(from, to){
-            var c = Constraint.create({
-                bodyA: from,
-                bodyB: to,
-                stiffness: 0.001,
-                length: 150,
-                render: {
-                    lineWidth: 2,
-                    strokeStyle: 'rgba(150,150,0,0.4)'
-                }
-            });
-            Composite.addConstraint(everything, c);
-        };
 
         var getBodyBy = function(id){
             return bodies.filter(function(body) {
@@ -168,42 +182,36 @@ Array.prototype.selectMany = function(fn) {
 
         var bindLinkedBodies = function(cards) {
         	cards.forEach(function(to){
-        		cardManagement.getIdsPointingTo(to).forEach(function(fromId){
-        			
-	        		bindBodies(getBodyBy(fromId), getBodyBy(to.id));
-        		})
+        		cardManagement.getIdsPointingTo(to)
+                          .forEach(function(fromId){
+                                    connectBodies(getBodyBy(fromId), getBodyBy(to.id));
+                                   })
         	});
         }
-        
-        var y = 1;
+ 
+        var connectBodies = function(from, to){
+            var c = Constraint.create({
+                           bodyA: from,
+                           bodyB: to,
+                           stiffness: 0.001,
+                           length: 150,
+                           render: {
+                           lineWidth: 2,
+                           strokeStyle: 'rgba(150,150,0,0.4)'
+                        }
+            });
+            Composite.addConstraint(everything, c);
+        };
+
 
         var createCard = function(card){
-            bodies.push(createBody(card, y++));
+            bodies.push(createBody(card, yCreatePosition++));
         }
-
-        Array.prototype.first = function(fn){
-            if(this.length > 0){
-                if(fn){
-                    fn(this[0]);
-                }
-                return this[0];
-            }
-        };
-
-        Array.prototype.empty = function(fn){
-            if(this.length == 0){
-                fn();
-            }
-            return this;
-        };
-
-        Demo.reset();
-        cardManagement.getCards().forEach(createCard);
-
+ 
         // - - - - - Highlighting
         var toTransparent = function(body){
-            body.render.fillStyle = body.render.fillStyle.replace(", 1)",", 0.3)");
-            body.render.strokeStyle = body.render.strokeStyle.replace(", 1)",", 0.3)");
+            body.render.fillStyle = body.render.fillStyle.replace(", 1)",", 0.6)");
+            body.render.strokeStyle = body.render.strokeStyle.replace(", 1)",", 0.1)");
         }
 
         var everythingTransparent = function() {
@@ -213,8 +221,8 @@ Array.prototype.selectMany = function(fn) {
         }
 
         var toSolid = function(body) {
-            body.render.fillStyle = body.render.fillStyle.replace(", 0.3)",", 1)");
-            body.render.strokeStyle = body.render.strokeStyle.replace(", 0.3)",", 1)");
+            body.render.fillStyle = body.render.fillStyle.replace(", 0.6)",", 1)");
+            body.render.strokeStyle = body.render.strokeStyle.replace(", 0.1)",", 1)");
         }
 
         var setSolidOn = function(list) {
@@ -238,8 +246,6 @@ Array.prototype.selectMany = function(fn) {
         var hideAllHighlights = function() {
             bodies.forEach(hideHighlight);
         }
-
-        var scale = 1;
 
         function highlightCard(hit) {
             var show = !hit.body.render.hasHighlight;
@@ -288,15 +294,15 @@ Array.prototype.selectMany = function(fn) {
         }
         
         document.querySelector(".zoom-reset").addEventListener('click', function(){
-        	applyZoom(1.0/scale, _engine.render.bounds.min);
+        	applyZoom(1.0/_engine.render.scale, _engine.render.bounds.min);
         });
  
         document.querySelector(".zoom-in").addEventListener('click', function(){
-            applyZoom(1.1/scale, _engine.render.bounds.min);
+            applyZoom(1.1/_engine.render.scale, _engine.render.bounds.min);
         });
  
         document.querySelector(".zoom-out").addEventListener('click', function(){
-            applyZoom(0.9/scale, _engine.render.bounds.min);
+            applyZoom(0.9/_engine.render.scale, _engine.render.bounds.min);
         });
 
         document.querySelector("canvas").onmousewheel = function (event) {
@@ -306,7 +312,7 @@ Array.prototype.selectMany = function(fn) {
             var scaleLimits = { min:0.5, max:1.5 };
             
             var zoom = Math.pow(1 + Math.abs(wheel)/2 , wheel > 0 ? 1 : -1);
-            zoom = getStepMultiply( zoom, scale, scaleLimits.min, scaleLimits.max);
+            zoom = getStepMultiply( zoom, _engine.render.scale, scaleLimits.min, scaleLimits.max);
             
         	applyZoom(zoom, mouse);
         }
@@ -317,10 +323,10 @@ Array.prototype.selectMany = function(fn) {
                 Mouse.setOffset(_engine.input.mouse,  _engine.render.bounds.min);
         }
 
-		function applyZoom(zoomStep, mousePosition) {
+		var applyZoom = function(zoomStep, mousePosition) {
 
-            scale *= zoomStep;
-            document.querySelector(".zoom-value").innerHTML = (scale + "").substr(0, 5);
+            _engine.render.scale *= zoomStep;
+            document.querySelector(".zoom-value").innerHTML = (_engine.render.scale + "").substr(0, 5);
  
             var diff = Math2d.diff(_engine.render.bounds.max, _engine.render.bounds.min);
             var xPixelStep = (diff.x * zoomStep)-diff.x;
@@ -336,32 +342,32 @@ Array.prototype.selectMany = function(fn) {
  
             _engine.render.bounds = Math2d.translateQuad(_engine.render.bounds, {x: 0, y: 0}, _engine.world.bounds);
  
-            Mouse.setScale(_engine.input.mouse, {x:scale, y:scale});
+            Mouse.setScale(_engine.input.mouse, {x:_engine.render.scale, y:_engine.render.scale});
             Mouse.setOffset(_engine.input.mouse,  _engine.render.bounds.min);
 		}
 
-        Events.on(_engine, 'afterTick', function(event) {
-            c.font = "12px Arial";
+        Events.on(_engine, 'onRender', function(event) {
             c.fillStyle = 'rgba(255, 255, 255, 0.8)';
 
             Composite.allBodies(everything).forEach(function(box){
                 Body.rotate(box, -box.angle);
                 for(t = 0; t < box.data.title.length; t++){
+                                                    //c.scale(3,3)
                     c.fillText(box.data.title[t],
-                               (box.position.x - _engine.render.bounds.min.x)/scale - (cardWidth/scale)/2 + 5,
-                               (box.position.y - _engine.render.bounds.min.y)/scale - 25 + (t * 16),
-                               cardWidth/scale);
+                               (box.position.x) - (cardWidth)/2 + 5,
+                               (box.position.y) - 25 + (t * 16));
                 }
             });
-            counter = 0;
         });
-
+ 
+        Demo.reset();
+        cardManagement.getCards().forEach(createCard);
         var everything = Composite.create({bodies:bodies});
         World.add(_world, everything);
         bindLinkedBodies(cardManagement.getCards());
-        var renderOptions = _engine.render.options;
-        renderOptions.showShadows = true;
-        
+        _engine.render.options.showShadows = true;
+
+ 
     };
 
     Demo.initControls = function() {
@@ -501,7 +507,7 @@ Array.prototype.selectMany = function(fn) {
         renderOptions.hasBounds = true;
         renderOptions.showDebug = true;
         renderOptions.showBroadphase = false;
-        renderOptions.showBounds = true;
+        renderOptions.showBounds = false;
         renderOptions.showVelocity = false;
         renderOptions.showCollisions = false;
         renderOptions.showAxes = false;
